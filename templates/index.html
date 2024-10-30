@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生醫資訊擷取技術 Project 3</title>
+</head>
+<body>
+    <h1>PubMed 搜索和文字雲生成</h1>
+    <form id="search-form">
+        <label for="keyword">關鍵字:</label>
+        <input type="text" id="keyword" name="keyword" required>
+        
+        <label for="count">文檔數量:</label>
+        <input type="number" id="count" name="count" min="1" max="100" required>
+        
+        <button type="submit">搜尋並生成文字雲</button>
+    </form>
+    <div id="results">
+        <h2>文字雲</h2>
+        <img id="word-cloud" src="" alt="文字雲將顯示在此處">
+    </div>
+
+    <script>
+        document.getElementById('search-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const keyword = document.getElementById('keyword').value;
+            const count = document.getElementById('count').value;
+
+            fetch('/search', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ keyword: keyword, count: count })
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                const imgElement = document.getElementById('word-cloud');
+                imgElement.src = URL.createObjectURL(blob);
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>
