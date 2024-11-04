@@ -11,13 +11,9 @@ import nltk
 import os
 
 # 確保 NLTK 資料下載
-nltk.download('stopwords')
 nltk_data_path = './nltk_data'
-nltk.data.path.append(nltk_data_path)
-
-# 檢查是否已下載停止詞
-if not os.path.exists(os.path.join(nltk_data_path, 'corpora/stopwords')):
-    nltk.download('stopwords', download_dir=nltk_data_path)
+nltk.download('stopwords', download_dir=nltk_data_path)
+nltk.download('punkt', download_dir=nltk_data_path) 
 
 app = Flask(__name__)
 
