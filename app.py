@@ -11,7 +11,13 @@ import nltk
 import os
 
 nltk.download('stopwords')
+nltk_data_path = './nltk_data'
+nltk.data.path.append(nltk_data_path)
 
+# 检查是否已下载停止词
+if not os.path.exists(os.path.join(nltk_data_path, 'corpora/stopwords')):
+    nltk.download('stopwords', download_dir=nltk_data_path)
+    
 app = Flask(__name__)
 
 # PubMed API base URL
