@@ -36,10 +36,12 @@ def fetch_pubmed_articles(keyword, count):
 
     # 抓取文章摘要並預處理
     preprocessed_summaries = []
-    if article_ids:
+    batch_size = 100  # 可以根據需要調整批次大小
+    for i in range(0, len(article_ids), batch_size):
+        batch_ids = article_ids[i:i+batch_size]
         summary_params = {
             "db": "pubmed",
-            "id": ",".join(article_ids),
+            "id": ",".join(batch_ids),
             "retmode": "json"
         }
         summary_response = requests.get(PUBMED_SUMMARY_URL, params=summary_params)
