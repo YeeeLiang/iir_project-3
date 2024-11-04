@@ -8,6 +8,7 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import io
 import nltk
+
 nltk.download('stopwords')
 
 app = Flask(__name__)
@@ -32,8 +33,8 @@ def fetch_pubmed_articles(keyword, count):
     response = requests.get(PUBMED_API_URL, params=params)
     article_ids = response.json().get("esearchresult", {}).get("idlist", [])
 
-    # 抓取文章摘要
-    summaries = []
+    # 抓取文章摘要並預處理
+    preprocessed_summaries = []
     if article_ids:
         summary_params = {
             "db": "pubmed",
@@ -44,8 +45,10 @@ def fetch_pubmed_articles(keyword, count):
         articles = summary_response.json().get("result", {})
         for article_id in article_ids:
             article = articles.get(article_id, {})
-            summaries.append(article.get("source", ""))
-    return summaries
+            summary = article.get("source", "")
+            if summary:  # 確保有摘要
+                preprocessed_summaries.append(preprocess_text(summary))
+    return preprocessed_summaries
 
 # 預處理文本
 def preprocess_text(text):
@@ -72,11 +75,10 @@ def search():
     data = request.json
     keyword = data.get("keyword")
     count = data.get("count")
-    summaries = fetch_pubmed_articles(keyword, count)
-    preprocessed_text = [preprocess_text(summary) for summary in summaries]
+    preprocessed_text = fetch_pubmed_articles(keyword, count)
     
     # 訓練 Word2Vec 模型
-    cbow_model = Word2Vec(sentences=preprocessed_text, vector_size=100, window=2, min_count=1, sg=0)
+    cbow_model = Word2Vec(sentences=preprocessed_text, vector_size=100, window=5, min_count=1, sg=0)
 
     # 把詞按頻率拼接成一個字串，用於生成文字雲
     all_words = ' '.join([' '.join(words) for words in preprocessed_text])
