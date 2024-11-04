@@ -10,17 +10,18 @@ import io
 import nltk
 import os
 
+# 確保 NLTK 資料下載
 nltk.download('stopwords')
 nltk_data_path = './nltk_data'
 nltk.data.path.append(nltk_data_path)
 
-# 检查是否已下载停止词
+# 檢查是否已下載停止詞
 if not os.path.exists(os.path.join(nltk_data_path, 'corpora/stopwords')):
     nltk.download('stopwords', download_dir=nltk_data_path)
-    
+
 app = Flask(__name__)
 
-# PubMed API base URL
+# PubMed API 基本 URL
 PUBMED_API_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 PUBMED_SUMMARY_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
 
@@ -38,24 +39,31 @@ def fetch_pubmed_articles(keyword, count):
         "usehistory": "y"
     }
     response = requests.get(PUBMED_API_URL, params=params)
-    article_ids = response.json().get("esearchresult", {}).get("idlist", [])
+    if response.status_code != 200:
+        return []  # 處理請求失敗的情況
 
-    # 抓取文章摘要並預處理
+    article_ids = response.json().get("esearchresult", {}).get("idlist", [])
+    if not article_ids:
+        return []  # 處理未找到文章的情況
+
     preprocessed_summaries = []
-    batch_size = 100  # 可以根據需要調整批次大小
+    batch_size = 100
     for i in range(0, len(article_ids), batch_size):
-        batch_ids = article_ids[i:i+batch_size]
+        batch_ids = article_ids[i:i + batch_size]
         summary_params = {
             "db": "pubmed",
             "id": ",".join(batch_ids),
             "retmode": "json"
         }
         summary_response = requests.get(PUBMED_SUMMARY_URL, params=summary_params)
+        if summary_response.status_code != 200:
+            continue  # 如果這批請求失敗，則跳過
+
         articles = summary_response.json().get("result", {})
-        for article_id in article_ids:
+        for article_id in batch_ids:
             article = articles.get(article_id, {})
             title = article.get("title", "")
-            if title:  # 確保有標題
+            if title:
                 preprocessed_summaries.append(preprocess_text(title))
     return preprocessed_summaries
 
@@ -84,6 +92,9 @@ def search():
     data = request.json
     keyword = data.get("keyword")
     count = data.get("count")
+
+    print(f"Keyword: {keyword}, Count: {count}")  # 輸出關鍵字和數量到控制台
+
     preprocessed_text = fetch_pubmed_articles(keyword, count)
     
     # 訓練 Word2Vec 模型
