@@ -46,9 +46,9 @@ def fetch_pubmed_articles(keyword, count):
         articles = summary_response.json().get("result", {})
         for article_id in article_ids:
             article = articles.get(article_id, {})
-            summary = article.get("source", "")
-            if summary:  # 確保有摘要
-                preprocessed_summaries.append(preprocess_text(summary))
+            title = article.get("title", "")
+            if title:  # 確保有標題
+                preprocessed_summaries.append(preprocess_text(title))
     return preprocessed_summaries
 
 # 預處理文本
