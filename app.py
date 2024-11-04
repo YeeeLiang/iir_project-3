@@ -1,29 +1,37 @@
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, send_file
 import requests
 from gensim.models import Word2Vec
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import string
 from wordcloud import WordCloud
-import matplotlib.pyplot as plt
 import io
 import nltk
 import os
 
 # 確保 NLTK 資料下載
 nltk_data_path = './nltk_data'
-nltk.download('stopwords', download_dir=nltk_data_path)
-nltk.download('punkt', download_dir=nltk_data_path) 
+if not os.path.exists(nltk_data_path):
+    os.makedirs(nltk_data_path)
+
+try:
+    nltk.download('stopwords', download_dir=nltk_data_path)
+    nltk.download('punkt', download_dir=nltk_data_path)
+except Exception as e:
+    print(f"下載 NLTK 資料時出錯: {e}")
+
+# 將 NLTK 資料路徑添加到系統路徑
+nltk.data.path.append(nltk_data_path)
+
+# 停用詞與標點符號移除
+stop_words = set(stopwords.words('english'))
+punctuation_table = str.maketrans('', '', string.punctuation)
 
 app = Flask(__name__)
 
 # PubMed API 基本 URL
 PUBMED_API_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 PUBMED_SUMMARY_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
-
-# 停用詞與標點符號移除
-stop_words = set(stopwords.words('english'))
-punctuation_table = str.maketrans('', '', string.punctuation)
 
 # PubMed API 搜尋函數
 def fetch_pubmed_articles(keyword, count):
@@ -36,10 +44,12 @@ def fetch_pubmed_articles(keyword, count):
     }
     response = requests.get(PUBMED_API_URL, params=params)
     if response.status_code != 200:
+        print(f"API 請求失敗: {response.status_code}")
         return []  # 處理請求失敗的情況
 
     article_ids = response.json().get("esearchresult", {}).get("idlist", [])
     if not article_ids:
+        print("未找到文章")
         return []  # 處理未找到文章的情況
 
     preprocessed_summaries = []
@@ -53,6 +63,7 @@ def fetch_pubmed_articles(keyword, count):
         }
         summary_response = requests.get(PUBMED_SUMMARY_URL, params=summary_params)
         if summary_response.status_code != 200:
+            print(f"摘要請求失敗: {summary_response.status_code}")
             continue  # 如果這批請求失敗，則跳過
 
         articles = summary_response.json().get("result", {})
@@ -92,7 +103,10 @@ def search():
     print(f"Keyword: {keyword}, Count: {count}")  # 輸出關鍵字和數量到控制台
 
     preprocessed_text = fetch_pubmed_articles(keyword, count)
-    
+
+    if not preprocessed_text:
+        return jsonify({"error": "未找到任何文章"}), 404
+
     # 訓練 Word2Vec 模型
     cbow_model = Word2Vec(sentences=preprocessed_text, vector_size=100, window=5, min_count=1, sg=0)
 
