@@ -8,6 +8,7 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import io
 import nltk
+import os
 
 nltk.download('stopwords')
 
@@ -87,4 +88,5 @@ def search():
     return send_file(word_cloud_img, mimetype='image/png')
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))  # 預設端口設為 5000
+    app.run(host='0.0.0.0', port=port, debug=True)
