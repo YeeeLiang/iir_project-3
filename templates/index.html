@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>生醫資訊擷取技術 Project 3</title>
+    <style>
+        #results {
+            display: flex;
+            justify-content: space-around;
+        }
+        #results img {
+            max-width: 90%;  /* 調整圖片的最大寬度 */
+            height: auto;   /* 確保圖片的高度自動調整 */
+        }
+    </style>
 </head>
 <body>
     <h1>PubMed 搜索和文字雲生成</h1>
@@ -14,11 +24,17 @@
         <label for="count">文檔數量:</label>
         <input type="number" id="count" name="count" min="1" max="10000" required>
         
-        <button type="submit">搜尋並生成文字雲</button>
+        <button type="submit">搜尋並生成圖片</button>
     </form>
     <div id="results">
-        <h2>文字雲</h2>
-        <img id="word-cloud" src="" alt="文字雲將顯示在此處">
+        <div>
+            <h2>文字雲</h2>
+            <img id="word-cloud" src="" alt="文字雲將顯示在此處">
+        </div>
+        <div>
+            <h2>PCA 圖</h2>
+            <img id="pca-plot" src="" alt="PCA 圖將顯示在此處">
+        </div>
     </div>
 
     <script>
@@ -37,6 +53,20 @@
             .then(response => response.blob())
             .then(blob => {
                 const imgElement = document.getElementById('word-cloud');
+                imgElement.src = URL.createObjectURL(blob);
+            })
+            .catch(error => console.error('Error:', error));
+
+            fetch('/pca', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ keyword: keyword, count: count })
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                const imgElement = document.getElementById('pca-plot');
                 imgElement.src = URL.createObjectURL(blob);
             })
             .catch(error => console.error('Error:', error));
