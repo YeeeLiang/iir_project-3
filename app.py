@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, send_file, jsonify
 import requests
 from gensim.models import Word2Vec
 from nltk.corpus import stopwords
@@ -8,6 +8,9 @@ from wordcloud import WordCloud
 import io
 import nltk
 import os
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+import time
 
 # 確保 NLTK 資料下載
 nltk_data_path = './nltk_data'
@@ -53,7 +56,7 @@ def fetch_pubmed_articles(keyword, count):
         return []  # 處理未找到文章的情況
 
     preprocessed_summaries = []
-    batch_size = 100
+    batch_size = 50  # 減少每批請求的大小
     for i in range(0, len(article_ids), batch_size):
         batch_ids = article_ids[i:i + batch_size]
         summary_params = {
@@ -72,6 +75,9 @@ def fetch_pubmed_articles(keyword, count):
             title = article.get("title", "")
             if title:
                 preprocessed_summaries.append(preprocess_text(title))
+        
+        time.sleep(1)  # 在每批請求之間添加延遲
+
     return preprocessed_summaries
 
 # 預處理文本
@@ -82,9 +88,28 @@ def preprocess_text(text):
 
 # 構建文字雲
 def generate_word_cloud(text):
-    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
+    wordcloud = WordCloud(width=850, height=500, background_color='white').generate(text)
     image_stream = io.BytesIO()
     wordcloud.to_image().save(image_stream, 'PNG')
+    image_stream.seek(0)
+    return image_stream
+
+# 構建 PCA 圖
+def generate_pca_plot(model):
+    words = list(model.wv.index_to_key)
+    word_vectors = model.wv[words]
+
+    pca = PCA(n_components=2)
+    word_pca = pca.fit_transform(word_vectors)
+
+    plt.figure(figsize=(10, 10))
+    plt.scatter(word_pca[:, 0], word_pca[:, 1])
+
+    for i, word in enumerate(words):
+        plt.annotate(word, xy=(word_pca[i, 0], word_pca[i, 1]))
+
+    image_stream = io.BytesIO()
+    plt.savefig(image_stream, format='png')
     image_stream.seek(0)
     return image_stream
 
@@ -115,6 +140,25 @@ def search():
     word_cloud_img = generate_word_cloud(all_words)
     
     return send_file(word_cloud_img, mimetype='image/png')
+
+# 生成 PCA 圖
+@app.route('/pca', methods=['POST'])
+def pca():
+    data = request.json
+    keyword = data.get("keyword")
+    count = data.get("count")
+
+    preprocessed_text = fetch_pubmed_articles(keyword, count)
+
+    if not preprocessed_text:
+        return jsonify({"error": "未找到任何文章"}), 404
+
+    # 訓練 Word2Vec 模型
+    cbow_model = Word2Vec(sentences=preprocessed_text, vector_size=100, window=5, min_count=1, sg=0)
+
+    pca_plot_img = generate_pca_plot(cbow_model)
+    
+    return send_file(pca_plot_img, mimetype='image/png')
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))  # 預設端口設為 5000
